@@ -98,12 +98,14 @@ impl<F: FieldExt> ConditionalSelectChip<F> {
 
                 let cond = cond.copy_advice(|| "copy cond", &mut region, config.advices[3], 0)?;
 
-                let selected =
-                    if cond.value().copied().to_field() == Value::known(F::one()).to_field() {
-                        a.value().copied()
-                    } else {
-                        b.value().copied()
-                    };
+                let selected = cond.value().copied() * a.value().copied()
+                    + (Value::known(F::one()) - cond.value().copied()) * b.value().copied();
+
+                // if cond.value().copied().to_field() == Value::known(F::one()).to_field() {
+                //     a.value().copied()
+                // } else {
+                //     b.value().copied()
+                // };
 
                 let cell =
                     region.assign_advice(|| "select result", config.advices[2], 0, || selected)?;

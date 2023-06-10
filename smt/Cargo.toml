@@ -11,6 +11,6 @@ halo2curves = { git = 'https://github.com/privacy-scaling-explorations/halo2curv
 pasta_curves = "0.5.1"
 ark-std = { version = "^0.4.0", default-features = false }
 anyhow = "1.0.41"
-ff = "0.13"
+ff = "0.13.0"
 rand = "0.8"
 
