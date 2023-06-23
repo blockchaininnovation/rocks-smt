@@ -197,8 +197,15 @@ impl<F: FieldExt> IsEqualChip<F> {
             |mut region: Region<'_, F>| {
                 config.s_is_eq.enable(&mut region, 0)?;
 
+                // こういうふうにすればa==bのとき1でそうでないときに0となる変数を作れる
+                let cond = a
+                    .value()
+                    .zip(b.value())
+                    .map(|(a, b)| if a == b { F::one() } else { F::zero() });
+
                 let a_field = a.value().copied().to_field();
                 let b_field = b.value().copied().to_field();
+                let delta = a_field - b_field;
 
                 a.copy_advice(|| "copy a", &mut region, config.advices[0], 0)?;
                 b.copy_advice(|| "copy b", &mut region, config.advices[1], 0)?;
@@ -208,20 +215,13 @@ impl<F: FieldExt> IsEqualChip<F> {
                     config.advices[3],
                     0,
                     || {
-                        if a_field == b_field {
-                            Value::known(F::one())
-                        } else {
-                            let delta = a_field - b_field;
-                            delta.invert().evaluate()
-                        }
+                        cond * Value::known(F::one())
+                            + (Value::known(F::one()) - cond) * delta.invert().evaluate()
                     },
                 )?;
 
-                let is_eq = if a_field == b_field {
-                    Value::known(F::one())
-                } else {
-                    Value::known(F::zero())
-                };
+                let is_eq = cond * Value::known(F::one())
+                    + (Value::known(F::one()) - cond) * Value::known(F::zero());
 
                 let cell = region.assign_advice(|| "is_eq", config.advices[2], 0, || is_eq)?;
                 Ok(cell)
