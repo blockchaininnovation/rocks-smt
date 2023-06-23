@@ -351,7 +351,7 @@ mod test {
     use crate::poseidon::{FieldHasher, Poseidon};
     use halo2_proofs::arithmetic::Field;
     use halo2_proofs::arithmetic::FieldExt;
-    use halo2_proofs::pasta::Fp;
+    use halo2_proofs::halo2curves::pasta::Fp;
     use rand::rngs::OsRng;
 
     //helper to change leaves array to BTreeMap and then create SMT

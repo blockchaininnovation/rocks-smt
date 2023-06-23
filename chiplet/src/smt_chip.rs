@@ -209,7 +209,8 @@ mod test {
         circuit::{Layouter, SimpleFloorPlanner, Value},
         plonk::{Advice, Circuit, Column, ConstraintSystem, Error},
     };
-    use halo2_proofs::{dev::MockProver, pasta::EqAffine, pasta::Fp};
+    use halo2_proofs::halo2curves::pasta::{EqAffine, Fp};
+    use halo2_proofs::dev::MockProver;
     use rand::rngs::OsRng;
     use smt::poseidon::{FieldHasher, Poseidon, SmtP128Pow5T3};
     use smt::smt::SparseMerkleTree;
