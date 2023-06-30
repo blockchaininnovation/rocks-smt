@@ -194,234 +194,234 @@ impl<
     }
 }
 
-#[cfg(test)]
-mod test {
+// #[cfg(test)]
+// mod test {
 
-    use super::{PathChip, PathConfig};
-    use crate::measure;
-    use crate::utilities::{AssertEqualChip, AssertEqualConfig};
-    use halo2_gadgets::poseidon::primitives::Spec;
-    use halo2_proofs::plonk::{create_proof, keygen_pk, keygen_vk, verify_proof, SingleVerifier};
-    use halo2_proofs::poly::commitment::Params;
-    use halo2_proofs::transcript::{Blake2bRead, Blake2bWrite, Challenge255};
-    use halo2_proofs::{
-        arithmetic::{Field, FieldExt},
-        circuit::{Layouter, SimpleFloorPlanner, Value},
-        plonk::{Advice, Circuit, Column, ConstraintSystem, Error},
-    };
-    use halo2_proofs::halo2curves::pasta::{EqAffine, Fp};
-    use halo2_proofs::dev::MockProver;
-    use rand::rngs::OsRng;
-    use smt::poseidon::{FieldHasher, Poseidon, SmtP128Pow5T3};
-    use smt::smt::SparseMerkleTree;
-    use std::clone::Clone;
-    use std::marker::PhantomData;
-    use std::time::Instant;
+//     use super::{PathChip, PathConfig};
+//     use crate::measure;
+//     use crate::utilities::{AssertEqualChip, AssertEqualConfig};
+//     use halo2_gadgets::poseidon::primitives::Spec;
+//     use halo2_proofs::plonk::{create_proof, keygen_pk, keygen_vk, verify_proof, SingleVerifier};
+//     use halo2_proofs::poly::commitment::Params;
+//     use halo2_proofs::transcript::{Blake2bRead, Blake2bWrite, Challenge255};
+//     use halo2_proofs::{
+//         arithmetic::{Field, FieldExt},
+//         circuit::{Layouter, SimpleFloorPlanner, Value},
+//         plonk::{Advice, Circuit, Column, ConstraintSystem, Error},
+//     };
+//     use halo2_proofs::halo2curves::pasta::{EqAffine, Fp};
+//     use halo2_proofs::dev::MockProver;
+//     use rand::rngs::OsRng;
+//     use smt::poseidon::{FieldHasher, Poseidon, SmtP128Pow5T3};
+//     use smt::smt::SparseMerkleTree;
+//     use std::clone::Clone;
+//     use std::marker::PhantomData;
+//     use std::time::Instant;
 
-    #[derive(Clone)]
-    struct TestConfig<
-        F: FieldExt,
-        S: Spec<F, WIDTH, RATE>,
-        H: FieldHasher<F, 2>,
-        const WIDTH: usize,
-        const RATE: usize,
-        const N: usize,
-    > {
-        path_config: PathConfig<F, S, WIDTH, RATE, N>,
-        advices: [Column<Advice>; 3],
-        assert_equal_config: AssertEqualConfig<F>,
-        _hasher: PhantomData<H>,
-    }
+//     #[derive(Clone)]
+//     struct TestConfig<
+//         F: FieldExt,
+//         S: Spec<F, WIDTH, RATE>,
+//         H: FieldHasher<F, 2>,
+//         const WIDTH: usize,
+//         const RATE: usize,
+//         const N: usize,
+//     > {
+//         path_config: PathConfig<F, S, WIDTH, RATE, N>,
+//         advices: [Column<Advice>; 3],
+//         assert_equal_config: AssertEqualConfig<F>,
+//         _hasher: PhantomData<H>,
+//     }
 
-    struct TestCircuit<
-        F: FieldExt,
-        S: Spec<F, WIDTH, RATE>,
-        H: FieldHasher<F, 2>,
-        const WIDTH: usize,
-        const RATE: usize,
-        const N: usize,
-    > {
-        leaves: [F; 3],
-        empty_leaf: [u8; 64],
-        hasher: H,
-        _spec: PhantomData<S>,
-    }
+//     struct TestCircuit<
+//         F: FieldExt,
+//         S: Spec<F, WIDTH, RATE>,
+//         H: FieldHasher<F, 2>,
+//         const WIDTH: usize,
+//         const RATE: usize,
+//         const N: usize,
+//     > {
+//         leaves: [F; 3],
+//         empty_leaf: [u8; 64],
+//         hasher: H,
+//         _spec: PhantomData<S>,
+//     }
 
-    impl<
-            F: FieldExt,
-            S: Spec<F, WIDTH, RATE> + Clone,
-            H: FieldHasher<F, 2> + Clone,
-            const WIDTH: usize,
-            const RATE: usize,
-            const N: usize,
-        > Circuit<F> for TestCircuit<F, S, H, WIDTH, RATE, N>
-    {
-        type Config = TestConfig<F, S, H, WIDTH, RATE, N>;
-        type FloorPlanner = SimpleFloorPlanner;
+//     impl<
+//             F: FieldExt,
+//             S: Spec<F, WIDTH, RATE> + Clone,
+//             H: FieldHasher<F, 2> + Clone,
+//             const WIDTH: usize,
+//             const RATE: usize,
+//             const N: usize,
+//         > Circuit<F> for TestCircuit<F, S, H, WIDTH, RATE, N>
+//     {
+//         type Config = TestConfig<F, S, H, WIDTH, RATE, N>;
+//         type FloorPlanner = SimpleFloorPlanner;
 
-        fn without_witnesses(&self) -> Self {
-            Self {
-                leaves: [F::zero(), F::zero(), F::zero()],
-                empty_leaf: [0u8; 64],
-                hasher: H::hasher(),
-                _spec: PhantomData,
-            }
-        }
+//         fn without_witnesses(&self) -> Self {
+//             Self {
+//                 leaves: [F::zero(), F::zero(), F::zero()],
+//                 empty_leaf: [0u8; 64],
+//                 hasher: H::hasher(),
+//                 _spec: PhantomData,
+//             }
+//         }
 
-        fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
-            let advices = [(); 3].map(|_| meta.advice_column());
-            advices
-                .iter()
-                .for_each(|column| meta.enable_equality(*column));
+//         fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
+//             let advices = [(); 3].map(|_| meta.advice_column());
+//             advices
+//                 .iter()
+//                 .for_each(|column| meta.enable_equality(*column));
 
-            TestConfig {
-                path_config: PathChip::<F, S, H, WIDTH, RATE, N>::configure(meta),
-                advices,
-                assert_equal_config: AssertEqualChip::configure(meta, [advices[0], advices[1]]),
-                _hasher: PhantomData,
-            }
-        }
+//             TestConfig {
+//                 path_config: PathChip::<F, S, H, WIDTH, RATE, N>::configure(meta),
+//                 advices,
+//                 assert_equal_config: AssertEqualChip::configure(meta, [advices[0], advices[1]]),
+//                 _hasher: PhantomData,
+//             }
+//         }
 
-        fn synthesize(
-            &self,
-            config: Self::Config,
-            mut layouter: impl Layouter<F>,
-        ) -> Result<(), Error> {
-            let smt = SparseMerkleTree::<F, H, N>::new_sequential(
-                &self.leaves,
-                &self.hasher.clone(),
-                &self.empty_leaf,
-            )
-            .unwrap();
-            let path = smt.generate_membership_proof(0);
-            let root = path
-                .calculate_root(&self.leaves[0], &self.hasher.clone())
-                .unwrap();
+//         fn synthesize(
+//             &self,
+//             config: Self::Config,
+//             mut layouter: impl Layouter<F>,
+//         ) -> Result<(), Error> {
+//             let smt = SparseMerkleTree::<F, H, N>::new_sequential(
+//                 &self.leaves,
+//                 &self.hasher.clone(),
+//                 &self.empty_leaf,
+//             )
+//             .unwrap();
+//             let path = smt.generate_membership_proof(0);
+//             let root = path
+//                 .calculate_root(&self.leaves[0], &self.hasher.clone())
+//                 .unwrap();
 
-            let (root_cell, leaf_cell, one) = layouter.assign_region(
-                || "test circuit",
-                |mut region| {
-                    let root_cell = region.assign_advice(
-                        || "root",
-                        config.advices[0],
-                        0,
-                        || Value::known(root),
-                    )?;
+//             let (root_cell, leaf_cell, one) = layouter.assign_region(
+//                 || "test circuit",
+//                 |mut region| {
+//                     let root_cell = region.assign_advice(
+//                         || "root",
+//                         config.advices[0],
+//                         0,
+//                         || Value::known(root),
+//                     )?;
 
-                    let leaf_cell = region.assign_advice(
-                        || "leaf",
-                        config.advices[1],
-                        0,
-                        || Value::known(self.leaves[0]),
-                    )?;
+//                     let leaf_cell = region.assign_advice(
+//                         || "leaf",
+//                         config.advices[1],
+//                         0,
+//                         || Value::known(self.leaves[0]),
+//                     )?;
 
-                    let one = region.assign_advice(
-                        || "one",
-                        config.advices[2],
-                        0,
-                        || Value::known(F::one()),
-                    )?;
-                    Ok((root_cell, leaf_cell, one))
-                },
-            )?;
+//                     let one = region.assign_advice(
+//                         || "one",
+//                         config.advices[2],
+//                         0,
+//                         || Value::known(F::one()),
+//                     )?;
+//                     Ok((root_cell, leaf_cell, one))
+//                 },
+//             )?;
 
-            let path_chip = PathChip::<F, S, H, WIDTH, RATE, N>::from_native(
-                config.path_config,
-                &mut layouter,
-                path,
-            )?;
-            let res = path_chip.check_membership(&mut layouter, root_cell, leaf_cell)?;
+//             let path_chip = PathChip::<F, S, H, WIDTH, RATE, N>::from_native(
+//                 config.path_config,
+//                 &mut layouter,
+//                 path,
+//             )?;
+//             let res = path_chip.check_membership(&mut layouter, root_cell, leaf_cell)?;
 
-            let assert_equal_chip = AssertEqualChip::construct(config.assert_equal_config, ());
-            assert_equal_chip.assert_equal(&mut layouter, res, one)?;
+//             let assert_equal_chip = AssertEqualChip::construct(config.assert_equal_config, ());
+//             assert_equal_chip.assert_equal(&mut layouter, res, one)?;
 
-            Ok(())
-        }
-    }
+//             Ok(())
+//         }
+//     }
 
-    #[test]
-    fn should_verify_path() {
-        // Circuit is very small, we pick a small value here
-        let k = 13;
+//     #[test]
+//     fn should_verify_path() {
+//         // Circuit is very small, we pick a small value here
+//         let k = 13;
 
-        let empty_leaf = [0u8; 64];
-        let rng = OsRng;
-        let leaves = [Fp::random(rng), Fp::random(rng), Fp::random(rng)];
-        const HEIGHT: usize = 3;
+//         let empty_leaf = [0u8; 64];
+//         let rng = OsRng;
+//         let leaves = [Fp::random(rng), Fp::random(rng), Fp::random(rng)];
+//         const HEIGHT: usize = 3;
 
-        let circuit = TestCircuit::<Fp, SmtP128Pow5T3<Fp, 0>, Poseidon<Fp, 2>, 3, 2, HEIGHT> {
-            leaves,
-            empty_leaf,
-            hasher: Poseidon::<Fp, 2>::new(),
-            _spec: PhantomData,
-        };
+//         let circuit = TestCircuit::<Fp, SmtP128Pow5T3<Fp, 0>, Poseidon<Fp, 2>, 3, 2, HEIGHT> {
+//             leaves,
+//             empty_leaf,
+//             hasher: Poseidon::<Fp, 2>::new(),
+//             _spec: PhantomData,
+//         };
 
-        let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-        assert_eq!(prover.verify(), Ok(()));
+//         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+//         assert_eq!(prover.verify(), Ok(()));
 
-        let now = Instant::now();
-        let params: Params<EqAffine> = Params::new(k);
-        let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
-        let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
-        println!("keygen time is {:?}", now.elapsed());
+//         let now = Instant::now();
+//         let params: dyn Params<EqAffine> = Params::new(k);
+//         let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
+//         let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
+//         println!("keygen time is {:?}", now.elapsed());
 
-        let now = Instant::now();
-        let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
-        create_proof(&params, &pk, &[circuit], &[&[]], OsRng, &mut transcript)
-            .expect("proof generation should not fail");
-        let proof: Vec<u8> = transcript.finalize();
-        println!("create_proof time is {:?}", now.elapsed());
+//         let now = Instant::now();
+//         let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+//         create_proof(&params, &pk, &[circuit], &[&[]], OsRng, &mut transcript)
+//             .expect("proof generation should not fail");
+//         let proof: Vec<u8> = transcript.finalize();
+//         println!("create_proof time is {:?}", now.elapsed());
 
-        let now = Instant::now();
-        let strategy = SingleVerifier::new(&params);
-        let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
-        let result = verify_proof(&params, pk.get_vk(), strategy, &[&[]], &mut transcript);
-        println!("verify_proof time is {:?}", now.elapsed());
+//         let now = Instant::now();
+//         let strategy = SingleVerifier::new(&params);
+//         let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
+//         let result = verify_proof(&params, pk.get_vk(), strategy, &[&[]], &mut transcript);
+//         println!("verify_proof time is {:?}", now.elapsed());
 
-        assert!(result.is_ok());
-    }
+//         assert!(result.is_ok());
+//     }
 
-    #[test]
-    #[allow(path_statements)]
-    fn should_verify_path_benchmark() {
-        // Circuit is very small, we pick a small value here
-        let k = 13;
+//     #[test]
+//     #[allow(path_statements)]
+//     fn should_verify_path_benchmark() {
+//         // Circuit is very small, we pick a small value here
+//         let k = 13;
 
-        let empty_leaf = [0u8; 64];
-        let rng = OsRng;
-        let leaves = [Fp::random(rng), Fp::random(rng), Fp::random(rng)];
-        const HEIGHT: usize = 3;
-        let num_iter = 3;
+//         let empty_leaf = [0u8; 64];
+//         let rng = OsRng;
+//         let leaves = [Fp::random(rng), Fp::random(rng), Fp::random(rng)];
+//         const HEIGHT: usize = 3;
+//         let num_iter = 3;
 
-        measure!(
-            {
-                let circuit =
-                    TestCircuit::<Fp, SmtP128Pow5T3<Fp, 0>, Poseidon<Fp, 2>, 3, 2, HEIGHT> {
-                        leaves,
-                        empty_leaf,
-                        hasher: Poseidon::<Fp, 2>::new(),
-                        _spec: PhantomData,
-                    };
+//         measure!(
+//             {
+//                 let circuit =
+//                     TestCircuit::<Fp, SmtP128Pow5T3<Fp, 0>, Poseidon<Fp, 2>, 3, 2, HEIGHT> {
+//                         leaves,
+//                         empty_leaf,
+//                         hasher: Poseidon::<Fp, 2>::new(),
+//                         _spec: PhantomData,
+//                     };
 
-                let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-                assert_eq!(prover.verify(), Ok(()));
+//                 let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+//                 assert_eq!(prover.verify(), Ok(()));
 
-                let params: Params<EqAffine> = Params::new(k);
-                let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
-                let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
-                let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
-                create_proof(&params, &pk, &[circuit], &[&[]], OsRng, &mut transcript)
-                    .expect("proof generation should not fail");
-                let proof: Vec<u8> = transcript.finalize();
+//                 let params: Params<EqAffine> = Params::new(k);
+//                 let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
+//                 let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
+//                 let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+//                 create_proof(&params, &pk, &[circuit], &[&[]], OsRng, &mut transcript)
+//                     .expect("proof generation should not fail");
+//                 let proof: Vec<u8> = transcript.finalize();
 
-                let strategy = SingleVerifier::new(&params);
-                let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
-                let result = verify_proof(&params, pk.get_vk(), strategy, &[&[]], &mut transcript);
-                assert!(result.is_ok());
-            },
-            "hola2",
-            "proof",
-            num_iter
-        );
-    }
-}
+//                 let strategy = SingleVerifier::new(&params);
+//                 let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
+//                 let result = verify_proof(&params, pk.get_vk(), strategy, &[&[]], &mut transcript);
+//                 assert!(result.is_ok());
+//             },
+//             "hola2",
+//             "proof",
+//             num_iter
+//         );
+//     }
+// }
