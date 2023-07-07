@@ -201,20 +201,24 @@ mod test {
     use crate::measure;
     use crate::utilities::{AssertEqualChip, AssertEqualConfig};
     use halo2_gadgets::poseidon::primitives::Spec;
-    use halo2_proofs::dev::MockProver;
-    use halo2_proofs::halo2curves::pasta::{EqAffine, Fp};
-    use halo2_proofs::plonk::{create_proof, keygen_pk, keygen_vk, verify_proof};
-    use halo2_proofs::poly::commitment::ParamsProver;
-    use halo2_proofs::poly::ipa::{commitment::IPACommitmentScheme, multiopen::ProverIPA};
-    use halo2_proofs::poly::ipa::{commitment::ParamsIPA, strategy::SingleStrategy};
-    use halo2_proofs::poly::VerificationStrategy;
-    use halo2_proofs::transcript::TranscriptReadBuffer;
-    use halo2_proofs::transcript::TranscriptWriterBuffer;
-    use halo2_proofs::transcript::{Blake2bRead, Blake2bWrite, Challenge255};
     use halo2_proofs::{
         arithmetic::{Field, FieldExt},
         circuit::{Layouter, SimpleFloorPlanner, Value},
-        plonk::{Advice, Circuit, Column, ConstraintSystem, Error},
+        dev::MockProver,
+        halo2curves::pasta::{EqAffine, Fp},
+        plonk::{
+            create_proof, keygen_pk, keygen_vk, verify_proof, Advice, Circuit, Column,
+            ConstraintSystem, Error,
+        },
+        poly::ipa::{
+            commitment::{IPACommitmentScheme, ParamsIPA},
+            multiopen::ProverIPA,
+            strategy::SingleStrategy,
+        },
+        poly::{commitment::ParamsProver, VerificationStrategy},
+        transcript::{
+            Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer,
+        },
     };
     use rand::rngs::OsRng;
     use smt::poseidon::{FieldHasher, Poseidon, SmtP128Pow5T3};
