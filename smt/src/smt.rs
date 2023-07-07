@@ -44,6 +44,8 @@ use std::{
     marker::PhantomData,
 };
 
+extern crate hex;
+
 /// Error enum for Sparse Merkle Tree.
 #[derive(Debug)]
 pub enum MerkleError {
@@ -437,5 +439,56 @@ mod test {
         let desired_res = Fp::from(index);
 
         assert_eq!(res, desired_res);
+    }
+
+    fn convert_hex_to_u8_array(hex_string: &str) -> Result<[u8; 64], hex::FromHexError> {
+        let stripped = if hex_string.starts_with("0x") {
+            &hex_string[2..]
+        } else {
+            hex_string
+        };
+        let vec = hex::decode(stripped)?;
+        let mut arr = [0u8; 64];
+        for (place, element) in arr.iter_mut().zip(vec.iter()) {
+            *place = *element;
+        }
+        Ok(arr)
+    }
+    
+    #[test]
+    fn should_create_data_and_create_proof() {
+        let address = "0x6079da09E8bfDFb3032eE0aD6f35Eb3e9aa506B6";
+        let index = convert_hex_to_u8_array(address).unwrap();
+        println!("{:?}", address);
+        println!("{:?}", index);
+
+        let before_state = "aiueo";
+        let after_state = "kakikukeko";
+
+        let poseidon = Poseidon::<Fp, 2>::new();
+        let default_leaf = [0u8; 64];
+        let rng = OsRng;
+        let leaves = [Fp::random(rng), Fp::random(rng), Fp::random(rng)];
+        const HEIGHT: usize = 3;
+        let smt = create_merkle_tree::<Fp, Poseidon<Fp, 2>, HEIGHT>(
+            poseidon.clone(),
+            &leaves,
+            &default_leaf,
+        );
+
+        let root = smt.root();
+
+        let empty_hashes =
+            gen_empty_hashes::<Fp, Poseidon<Fp, 2>, HEIGHT>(&poseidon, &default_leaf).unwrap();
+        let hash1 = leaves[0];
+        let hash2 = leaves[1];
+        let hash3 = leaves[2];
+
+        let hash12 = poseidon.hash([hash1, hash2]).unwrap();
+        let hash34 = poseidon.hash([hash3, empty_hashes[0]]).unwrap();
+
+        let hash1234 = poseidon.hash([hash12, hash34]).unwrap();
+        let calc_root = poseidon.hash([hash1234, empty_hashes[2]]).unwrap();
+
     }
 }
