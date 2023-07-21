@@ -349,6 +349,8 @@ fn parent(index: u64) -> Option<u64> {
 
 #[cfg(test)]
 mod test {
+    use std::collections::BTreeMap;
+
     use super::{gen_empty_hashes, SparseMerkleTree};
     use crate::poseidon::{FieldHasher, Poseidon};
     use halo2_proofs::arithmetic::Field;
@@ -454,10 +456,10 @@ mod test {
         }
         Ok(arr)
     }
-    
+
     #[test]
     fn should_create_data_and_create_proof() {
-        let address = "0x6079da09E8bfDFb3032eE0aD6f35Eb3e9aa506B6";
+        let address = "0x60";
         let index = convert_hex_to_u8_array(address).unwrap();
         println!("{:?}", address);
         println!("{:?}", index);
@@ -468,27 +470,31 @@ mod test {
         let poseidon = Poseidon::<Fp, 2>::new();
         let default_leaf = [0u8; 64];
         let rng = OsRng;
-        let leaves = [Fp::random(rng), Fp::random(rng), Fp::random(rng)];
-        const HEIGHT: usize = 3;
-        let smt = create_merkle_tree::<Fp, Poseidon<Fp, 2>, HEIGHT>(
-            poseidon.clone(),
-            &leaves,
-            &default_leaf,
-        );
+        // let leaves = [];
+        let mut leaves: BTreeMap<u32, Fp> = BTreeMap::new();
+        // とりあえずkeyとvalueに可能な値を入れてやってみる．
+        leaves.insert(0012, poseidon.hash([Fp::from(6), Fp::from(42)]).unwrap());
+
+        const HEIGHT: usize = 8;
+        // let smt = create_merkle_tree::<Fp, Poseidon<Fp, 2>, HEIGHT>(
+        //     poseidon.clone(),
+        //     &leaves,
+        //     &default_leaf,
+        // );
+        let smt: SparseMerkleTree<Fp, Poseidon<Fp, 2>, HEIGHT> = SparseMerkleTree::new(&leaves, &poseidon.clone(), &default_leaf).unwrap();
 
         let root = smt.root();
 
-        let empty_hashes =
-            gen_empty_hashes::<Fp, Poseidon<Fp, 2>, HEIGHT>(&poseidon, &default_leaf).unwrap();
-        let hash1 = leaves[0];
-        let hash2 = leaves[1];
-        let hash3 = leaves[2];
+        // let empty_hashes =
+        //     gen_empty_hashes::<Fp, Poseidon<Fp, 2>, HEIGHT>(&poseidon, &default_leaf).unwrap();
+        // let hash1 = leaves[0];
+        // let hash2 = leaves[1];
+        // let hash3 = leaves[2];
 
-        let hash12 = poseidon.hash([hash1, hash2]).unwrap();
-        let hash34 = poseidon.hash([hash3, empty_hashes[0]]).unwrap();
+        // let hash12 = poseidon.hash([hash1, hash2]).unwrap();
+        // let hash34 = poseidon.hash([hash3, empty_hashes[0]]).unwrap();
 
-        let hash1234 = poseidon.hash([hash12, hash34]).unwrap();
-        let calc_root = poseidon.hash([hash1234, empty_hashes[2]]).unwrap();
-
+        // let hash1234 = poseidon.hash([hash12, hash34]).unwrap();
+        // let calc_root = poseidon.hash([hash1234, empty_hashes[2]]).unwrap();
     }
 }
