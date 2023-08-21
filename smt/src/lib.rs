@@ -19,7 +19,32 @@ mod test {
     }
 
     #[test]
-    fn smt_proof() {
+    fn update_proof() {
+        const HEIGHT: usize = 3;
+        let rng = OsRng;
+        let default_leaf = [0u8; 64];
+        let poseidon = Poseidon::<Fp, 2>::new();
+        let leaves = [Fp::random(rng), Fp::random(rng), Fp::random(rng)];
+        let smt = create_merkle_tree::<Fp, Poseidon<Fp, 2>, HEIGHT>(
+            poseidon.clone(),
+            &leaves,
+            &default_leaf,
+        );
+
+        let transactions = [Fp::random(rng)];
+        let prev_root = &smt.root();
+        let new_root = &smt.root();
+
+        let proof = smt.update_state_proof(transactions);
+
+        let res = proof
+            .check_membership(&smt.root(), &leaves[0], &poseidon)
+            .unwrap();
+        assert!(res);
+    }
+
+    #[test]
+    fn membership_proof() {
         let poseidon = Poseidon::<Fp, 2>::new();
         let default_leaf = [0u8; 64];
         let rng = OsRng;
