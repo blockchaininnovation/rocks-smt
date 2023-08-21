@@ -53,6 +53,8 @@ pub enum MerkleError {
     InvalidLeaf,
     /// Thrown when the merkle path is invalid.
     InvalidPathNodes,
+    /// Thrown when the merkle root is invalid.
+    InvalidRoot,
 }
 
 impl core::fmt::Display for MerkleError {
@@ -60,6 +62,7 @@ impl core::fmt::Display for MerkleError {
         let msg = match self {
             MerkleError::InvalidLeaf => "Invalid leaf".to_owned(),
             MerkleError::InvalidPathNodes => "Path nodes are not consistent".to_owned(),
+            MerkleError::InvalidRoot => "Invalid root".to_owned(),
         };
         write!(f, "{}", msg)
     }
@@ -130,6 +133,44 @@ impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> Path<F, H, N> {
         }
 
         Ok(index)
+    }
+}
+
+#[derive(Clone)]
+pub struct State<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> {
+    /// The old state root of Merkle Tree.
+    pub prev_root: F,
+    /// The old state leaves of Merkle Tree.
+    pub prev_leaves: BTreeMap<u32, F>,
+    /// The new state root of Merkle Tree.
+    pub new_root: F,
+    /// Transactions for Merkle Tree.
+    pub transactions: Vec<F>,
+    /// Default Leaf Definition
+    pub default_leaf: [u8; 64],
+    /// The phantom hasher type used to reconstruct the merkle root.
+    pub marker: PhantomData<H>,
+}
+
+impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> State<F, H, N> {
+    pub fn check_update(&self, hasher: &H) -> Result<bool, Error> {
+        let mut prev_merkle =
+            SparseMerkleTree::<F, H, N>::new(&self.prev_leaves, &hasher, &self.default_leaf)
+                .unwrap();
+        if self.prev_root != prev_merkle.root() {
+            return Err(MerkleError::InvalidRoot.into());
+        }
+        let pairs: BTreeMap<u32, F> = self
+            .transactions
+            .iter()
+            .enumerate()
+            .map(|(i, l)| (i as u32, *l))
+            .collect();
+        prev_merkle.insert_batch(&pairs, hasher)?;
+        if self.new_root == prev_merkle.root() {
+            return Err(MerkleError::InvalidRoot.into());
+        }
+        Ok(true)
     }
 }
 
@@ -259,6 +300,33 @@ impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> SparseMerkleTree<F, H, N
 
         Path {
             path,
+            marker: PhantomData,
+        }
+    }
+
+    /// Give the previous state root, new state root and transaction. This is a "proof"
+    /// proving the state is updated correctly
+    pub fn update_state_proof(
+        &self,
+        transactions: Vec<F>,
+        hasher: H,
+        empty_leaf: [u8; 64],
+    ) -> State<F, H, N> {
+        let prev_root = self.root();
+        let prev_leaves = self.tree;
+        let pairs: BTreeMap<u32, F> = transactions
+            .iter()
+            .enumerate()
+            .map(|(i, l)| (i as u32, *l))
+            .collect();
+        self.insert_batch(&pairs, &hasher);
+        let new_root = self.root();
+        State {
+            prev_root,
+            prev_leaves,
+            new_root,
+            transactions,
+            default_leaf: empty_leaf,
             marker: PhantomData,
         }
     }
@@ -481,7 +549,8 @@ mod test {
         //     &leaves,
         //     &default_leaf,
         // );
-        let smt: SparseMerkleTree<Fp, Poseidon<Fp, 2>, HEIGHT> = SparseMerkleTree::new(&leaves, &poseidon.clone(), &default_leaf).unwrap();
+        let smt: SparseMerkleTree<Fp, Poseidon<Fp, 2>, HEIGHT> =
+            SparseMerkleTree::new(&leaves, &poseidon.clone(), &default_leaf).unwrap();
 
         let root = smt.root();
 
