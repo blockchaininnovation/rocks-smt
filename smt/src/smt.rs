@@ -148,6 +148,34 @@ pub struct SparseMerkleTree<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> {
 }
 
 impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> SparseMerkleTree<F, H, N> {
+    /// Creates a new Sparse Merkle Tree from a map of indices to field
+    /// elements.
+    pub fn new(leaves: &[F], hasher: &H, empty_leaf: &[u8; 64]) -> Result<Self, Error> {
+        let pairs: BTreeMap<u32, F> = leaves
+            .iter()
+            .enumerate()
+            .map(|(i, l)| (i as u32, *l))
+            .collect();
+        // Ensure the tree can hold this many leaves
+        let last_level_size = pairs.len().next_power_of_two();
+        let tree_size = 2 * last_level_size - 1;
+        let tree_height = tree_height(tree_size as u64);
+        assert!(tree_height <= N as u32);
+
+        // Initialize the merkle tree
+        let tree: BTreeMap<u64, F> = BTreeMap::new();
+        let empty_hashes = gen_empty_hashes(hasher, empty_leaf)?;
+
+        let mut smt = SparseMerkleTree::<F, H, N> {
+            tree,
+            empty_hashes,
+            marker: PhantomData,
+        };
+        smt.insert_batch(&pairs, hasher)?;
+
+        Ok(smt)
+    }
+
     /// Takes a batch of field elements, inserts
     /// these hashes into the tree, and updates the merkle root.
     pub fn insert_batch(&mut self, leaves: &BTreeMap<u32, F>, hasher: &H) -> Result<(), Error> {
@@ -180,45 +208,6 @@ impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> SparseMerkleTree<F, H, N
         }
 
         Ok(())
-    }
-
-    /// Creates a new Sparse Merkle Tree from a map of indices to field
-    /// elements.
-    pub fn new(
-        leaves: &BTreeMap<u32, F>,
-        hasher: &H,
-        empty_leaf: &[u8; 64],
-    ) -> Result<Self, Error> {
-        // Ensure the tree can hold this many leaves
-        let last_level_size = leaves.len().next_power_of_two();
-        let tree_size = 2 * last_level_size - 1;
-        let tree_height = tree_height(tree_size as u64);
-        assert!(tree_height <= N as u32);
-
-        // Initialize the merkle tree
-        let tree: BTreeMap<u64, F> = BTreeMap::new();
-        let empty_hashes = gen_empty_hashes(hasher, empty_leaf)?;
-
-        let mut smt = SparseMerkleTree::<F, H, N> {
-            tree,
-            empty_hashes,
-            marker: PhantomData,
-        };
-        smt.insert_batch(leaves, hasher)?;
-
-        Ok(smt)
-    }
-
-    /// Creates a new Sparse Merkle Tree from an array of field elements.
-    pub fn new_sequential(leaves: &[F], hasher: &H, empty_leaf: &[u8; 64]) -> Result<Self, Error> {
-        let pairs: BTreeMap<u32, F> = leaves
-            .iter()
-            .enumerate()
-            .map(|(i, l)| (i as u32, *l))
-            .collect();
-        let smt = Self::new(&pairs, hasher, empty_leaf)?;
-
-        Ok(smt)
     }
 
     /// Returns the Merkle tree root.
@@ -364,7 +353,7 @@ mod test {
         leaves: &[F],
         default_leaf: &[u8; 64],
     ) -> SparseMerkleTree<F, H, N> {
-        SparseMerkleTree::<F, H, N>::new_sequential(leaves, &hasher, default_leaf).unwrap()
+        SparseMerkleTree::<F, H, N>::new(leaves, &hasher, default_leaf).unwrap()
     }
 
     #[test]
@@ -471,9 +460,20 @@ mod test {
         let default_leaf = [0u8; 64];
         let rng = OsRng;
         // let leaves = [];
-        let mut leaves: BTreeMap<u32, Fp> = BTreeMap::new();
-        // とりあえずkeyとvalueに可能な値を入れてやってみる．
-        leaves.insert(0012, poseidon.hash([Fp::from(6), Fp::from(42)]).unwrap());
+        let leaves = [
+            Fp::zero(),
+            Fp::zero(),
+            Fp::zero(),
+            Fp::zero(),
+            Fp::zero(),
+            Fp::zero(),
+            Fp::zero(),
+            Fp::zero(),
+            Fp::zero(),
+            Fp::zero(),
+            Fp::zero(),
+            poseidon.hash([Fp::from(6), Fp::from(42)]).unwrap(),
+        ];
 
         const HEIGHT: usize = 8;
         // let smt = create_merkle_tree::<Fp, Poseidon<Fp, 2>, HEIGHT>(
@@ -481,7 +481,8 @@ mod test {
         //     &leaves,
         //     &default_leaf,
         // );
-        let smt: SparseMerkleTree<Fp, Poseidon<Fp, 2>, HEIGHT> = SparseMerkleTree::new(&leaves, &poseidon.clone(), &default_leaf).unwrap();
+        let smt: SparseMerkleTree<Fp, Poseidon<Fp, 2>, HEIGHT> =
+            SparseMerkleTree::new(&leaves, &poseidon.clone(), &default_leaf).unwrap();
 
         let root = smt.root();
 

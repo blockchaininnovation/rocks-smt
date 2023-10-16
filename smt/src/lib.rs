@@ -15,7 +15,7 @@ mod test {
         leaves: &[F],
         default_leaf: &[u8; 64],
     ) -> SparseMerkleTree<F, H, N> {
-        SparseMerkleTree::<F, H, N>::new_sequential(leaves, &hasher, default_leaf).unwrap()
+        SparseMerkleTree::<F, H, N>::new(leaves, &hasher, default_leaf).unwrap()
     }
 
     #[test]
