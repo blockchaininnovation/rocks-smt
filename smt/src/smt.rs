@@ -67,8 +67,6 @@ impl core::fmt::Display for MerkleError {
 
 impl std::error::Error for MerkleError {}
 
-/// The Path struct.
-///
 /// The path contains a sequence of sibling nodes that make up a merkle proof.
 /// Each pair is used to identify whether an incremental merkle root
 /// construction is valid at each intermediate step.
@@ -251,6 +249,11 @@ impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> SparseMerkleTree<F, H, N
             marker: PhantomData,
         }
     }
+
+    pub fn update_leaf(&mut self, index: u64, leaf: F) {
+        let prev_leaf = self.tree.get_mut(&index).unwrap();
+        *prev_leaf *= leaf;
+    }
 }
 
 /// A function to generate empty hashes with a given `default_leaf`.
@@ -338,8 +341,6 @@ fn parent(index: u64) -> Option<u64> {
 
 #[cfg(test)]
 mod test {
-    use std::collections::BTreeMap;
-
     use super::{gen_empty_hashes, SparseMerkleTree};
     use crate::poseidon::{FieldHasher, Poseidon};
     use halo2_proofs::arithmetic::Field;
@@ -497,5 +498,40 @@ mod test {
 
         // let hash1234 = poseidon.hash([hash12, hash34]).unwrap();
         // let calc_root = poseidon.hash([hash1234, empty_hashes[2]]).unwrap();
+    }
+
+    #[test]
+    fn should_update_proof_works() {
+        let poseidon = Poseidon::<Fp, 2>::new();
+        let default_leaf = [0u8; 64];
+        let rng = OsRng;
+
+        let alice = (0, Fp::random(rng));
+        let bob = (1, Fp::random(rng));
+        let charlie = (2, Fp::random(rng));
+
+        let leaves = [alice.1, bob.1, charlie.1];
+        const HEIGHT: usize = 3;
+        let mut smt = create_merkle_tree::<Fp, Poseidon<Fp, 2>, HEIGHT>(
+            poseidon.clone(),
+            &leaves,
+            &default_leaf,
+        );
+
+        let after_alice = (alice.0, Fp::random(rng));
+        let transaction = (alice, after_alice);
+
+        // initial root
+        let root = smt.root();
+        // sender account is part of the state tree
+        let proof = smt.generate_membership_proof(alice.0);
+        // send has enough funds to process transaction
+        assert!(Fp::zero() < alice.1);
+        // transacction is correct and matches the sender's public key on the rollup
+        smt.update_leaf(transaction.0 .0, transaction.1 .1);
+        // after root
+        let after_root = smt.root();
+
+        assert_ne!(root, after_root)
     }
 }
