@@ -1,24 +1,26 @@
 use std::marker::PhantomData;
 
 use halo2_proofs::{
-    circuit::Chip,
+    arithmetic::Field,
+    circuit::Layouter,
+    circuit::{Chip, SimpleFloorPlanner, Value},
     halo2curves::FieldExt,
-    plonk::{Advice, Column, ConstraintSystem, Instance},
-    poly::Rotation,
+    plonk::{Circuit, Column, ConstraintSystem, Error, Instance},
 };
 
 #[derive(Clone, Debug)]
-pub struct RollupConfig<const TX_MAX: usize> {
-    pub advice: [Column<Advice>; TX_MAX],
-    pub instance: [Column<Instance>; 2],
+struct RollupConfig<const TX_MAX: usize> {
+    initial_root: Column<Instance>,
+    final_root: Column<Instance>,
+    transactions: [(Column<Instance>, Column<Instance>); TX_MAX],
 }
 
-pub struct RollupChip<F: FieldExt, const TX_MAX: usize> {
+struct RollupChip<const TX_MAX: usize, F: Field> {
     config: RollupConfig<TX_MAX>,
     _marker: PhantomData<F>,
 }
 
-impl<F: FieldExt, const TX_MAX: usize> Chip<F> for RollupChip<F, TX_MAX> {
+impl<const TX_MAX: usize, F: FieldExt> Chip<F> for RollupChip<TX_MAX, F> {
     type Config = RollupConfig<TX_MAX>;
     type Loaded = ();
 
@@ -31,32 +33,35 @@ impl<F: FieldExt, const TX_MAX: usize> Chip<F> for RollupChip<F, TX_MAX> {
     }
 }
 
-impl<F: FieldExt, const TX_MAX: usize> RollupChip<F, TX_MAX> {
-    fn construct(config: <Self as Chip<F>>::Config) -> Self {
+struct RollupCircuit<const TX_MAX: usize, F: Field> {
+    pub initial_root: Value<F>,
+    pub final_root: Value<F>,
+    pub transactions: [(Value<F>, Value<F>); TX_MAX],
+}
+
+impl<F: FieldExt, const TX_MAX: usize> Default for RollupCircuit<TX_MAX, F> {
+    fn default() -> Self {
         Self {
-            config,
-            _marker: PhantomData,
+            initial_root: Value::default(),
+            final_root: Value::default(),
+            transactions: [(Value::default(), Value::default()); TX_MAX],
         }
     }
+}
 
-    fn configure(
-        meta: &mut ConstraintSystem<F>,
-        advice: [Column<Advice>; TX_MAX],
-        instance: [Column<Instance>; 2],
-    ) -> <Self as Chip<F>>::Config {
-        for column in instance {
-            meta.enable_equality(column)
-        }
-        for column in advice {
-            meta.enable_equality(column)
-        }
+impl<F: FieldExt, const TX_MAX: usize> Circuit<F> for RollupCircuit<TX_MAX, F> {
+    type Config = RollupConfig<TX_MAX>;
+    type FloorPlanner = SimpleFloorPlanner;
 
-        meta.create_gate("update_proof", |meta| {
-            let prev = meta.query_instance(instance[0], Rotation::cur());
-            let after = meta.query_instance(instance[1], Rotation::next());
-            vec![prev * after]
-        });
+    fn without_witnesses(&self) -> Self {
+        Self::default()
+    }
 
-        RollupConfig { advice, instance }
+    fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
+        todo!()
+    }
+
+    fn synthesize(&self, config: Self::Config, layouter: impl Layouter<F>) -> Result<(), Error> {
+        todo!()
     }
 }
