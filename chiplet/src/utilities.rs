@@ -18,6 +18,7 @@ pub struct ConditionalSelectConfig<F: FieldExt> {
     _marker: PhantomData<F>,
 }
 
+#[derive(Clone)]
 pub struct ConditionalSelectChip<F: FieldExt> {
     config: ConditionalSelectConfig<F>,
     _marker: PhantomData<F>,
@@ -123,6 +124,7 @@ pub struct IsEqualConfig<F: FieldExt> {
     _marker: PhantomData<F>,
 }
 
+#[derive(Clone)]
 pub struct IsEqualChip<F: FieldExt> {
     config: IsEqualConfig<F>,
     _marker: PhantomData<F>,
@@ -239,6 +241,7 @@ pub struct AssertEqualConfig<F: FieldExt> {
     _marker: PhantomData<F>,
 }
 
+#[derive(Clone)]
 pub struct AssertEqualChip<F: FieldExt> {
     config: AssertEqualConfig<F>,
     _marker: PhantomData<F>,

@@ -2,8 +2,9 @@ use crate::poseidon_chip::PoseidonChip;
 use crate::smt_chip::PathChip;
 
 use halo2_gadgets::poseidon::primitives::Spec;
+use halo2_proofs::dev::metadata::Region;
 use halo2_proofs::{
-    arithmetic::Field,
+    // arithmetic::Field,
     circuit::{Chip, Layouter, SimpleFloorPlanner, Value},
     halo2curves::FieldExt,
     plonk::{Circuit, Column, ConstraintSystem, Error, Instance},
@@ -21,65 +22,64 @@ struct RollupConfig<const TX_MAX: usize> {
 
 struct RollupChip<
     const TX_MAX: usize,
-    F: Field,
-    S: Spec<F, WIDTH, RATE>,
-    H: FieldHasher<F, 2>,
+    F: FieldExt,
+    S: Spec<F, WIDTH, RATE> + Clone,
+    H: FieldHasher<F, 2> + Clone,
     const WIDTH: usize,
     const RATE: usize,
     const N: usize,
 > {
     config: RollupConfig<TX_MAX>,
     markle_chip: PathChip<F, S, H, WIDTH, RATE, N>,
+    poseidon_chip: PoseidonChip<F, S, WIDTH, RATE, 2>,
     _marker: PhantomData<F>,
 }
 
 impl<
         const TX_MAX: usize,
         F: FieldExt,
-        S: Spec<F, WIDTH, RATE>,
-        H: FieldHasher<F, 2>,
+        S: Spec<F, WIDTH, RATE> + Clone,
+        H: FieldHasher<F, 2> + Clone,
         const WIDTH: usize,
         const RATE: usize,
         const N: usize,
     > RollupChip<TX_MAX, F, S, H, WIDTH, RATE, N>
 {
-    fn construct(config: <Self as Chip<F>>::Config) -> Self {
-        Self {
-            config,
-            _marker: PhantomData,
-        }
+    fn markle_chip(&self) -> PathChip<F, S, H, WIDTH, RATE, N> {
+        self.markle_chip.clone()
     }
 
-    fn prove(ctx: &mut Region) {}
-
-    fn configure(
-        meta: &mut ConstraintSystem<F>,
-        initial_root: Column<Instance>,
-        final_root: Column<Instance>,
-        transactions: [(Column<Instance>, Column<Instance>); TX_MAX],
-    ) -> <Self as Chip<F>>::Config {
-        meta.enable_equality(initial_root);
-        meta.enable_equality(final_root);
-        for (account, balance) in transactions {
-            meta.enable_equality(account);
-            meta.enable_equality(balance);
-        }
-
-        meta.create_gate("batch transactions", |meta| {
-            let init = meta.query_instance(initial_root, Rotation::cur());
-            let fin = meta.query_instance(final_root, Rotation::next());
-            vec![F::one()]
-        });
-
-        RollupConfig {
-            initial_root,
-            final_root,
-            transactions,
-        }
+    fn poseidon_chip(&self) -> PoseidonChip<F, S, WIDTH, RATE, 2> {
+        self.poseidon_chip.clone()
     }
 }
 
-impl<const TX_MAX: usize, F: FieldExt> Chip<F> for RollupChip<TX_MAX, F> {
+impl<
+        const TX_MAX: usize,
+        F: FieldExt,
+        S: Spec<F, WIDTH, RATE> + Clone,
+        H: FieldHasher<F, 2> + Clone,
+        const WIDTH: usize,
+        const RATE: usize,
+        const N: usize,
+    > RollupChip<TX_MAX, F, S, H, WIDTH, RATE, N>
+{
+    fn prove(&self, ctx: &mut Region) {
+        let markle_chip = self.markle_chip();
+        let poseidon_chip = self.poseidon_chip();
+    }
+}
+
+impl<
+        const TX_MAX: usize,
+        F: FieldExt,
+        S: Spec<F, WIDTH, RATE> + Clone,
+        H: FieldHasher<F, 2> + Clone,
+        const WIDTH: usize,
+        const RATE: usize,
+        const N: usize,
+    > Chip<F> for RollupChip<TX_MAX, F, S, H, WIDTH, RATE, N>
+{
     type Config = RollupConfig<TX_MAX>;
     type Loaded = ();
 
@@ -92,7 +92,7 @@ impl<const TX_MAX: usize, F: FieldExt> Chip<F> for RollupChip<TX_MAX, F> {
     }
 }
 
-struct RollupCircuit<const TX_MAX: usize, F: Field> {
+struct RollupCircuit<const TX_MAX: usize, F: FieldExt> {
     pub initial_root: Value<F>,
     pub final_root: Value<F>,
     pub transactions: [(Value<F>, Value<F>); TX_MAX],

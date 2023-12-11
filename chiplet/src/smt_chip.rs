@@ -43,6 +43,7 @@ pub struct PathConfig<
     _spec: PhantomData<S>,
 }
 
+#[derive(Clone)]
 pub struct PathChip<
     F: FieldExt,
     S: Spec<F, WIDTH, RATE>,
