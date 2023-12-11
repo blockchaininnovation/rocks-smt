@@ -43,6 +43,7 @@ pub struct PathConfig<
     _spec: PhantomData<S>,
 }
 
+#[derive(Clone)]
 pub struct PathChip<
     F: FieldExt,
     S: Spec<F, WIDTH, RATE>,
@@ -296,7 +297,7 @@ mod test {
             config: Self::Config,
             mut layouter: impl Layouter<F>,
         ) -> Result<(), Error> {
-            let smt = SparseMerkleTree::<F, H, N>::new_sequential(
+            let smt = SparseMerkleTree::<F, H, N>::new(
                 &self.leaves,
                 &self.hasher.clone(),
                 &self.empty_leaf,
